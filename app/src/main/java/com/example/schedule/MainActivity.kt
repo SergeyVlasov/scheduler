@@ -1,5 +1,7 @@
 package com.example.schedule
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,9 +17,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.IconButtonDefaults
@@ -41,10 +49,48 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val token = getSharedPreferences(AuthActivity.AUTH_PREFS, Context.MODE_PRIVATE)
+            .getString(AuthActivity.KEY_TOKEN, null)
+        if (token.isNullOrBlank()) {
+            startActivity(Intent(this, AuthActivity::class.java))
+            finish()
+            return
+        }
+
         enableEdgeToEdge()
         setContent {
             ScheduleTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = true,
+                                onClick = { },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Home,
+                                        contentDescription = "График"
+                                    )
+                                },
+                                label = { Text("График") }
+                            )
+                            NavigationBarItem(
+                                selected = false,
+                                onClick = {
+                                    startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Settings,
+                                        contentDescription = "Настройки"
+                                    )
+                                },
+                                label = { Text("Настройки") }
+                            )
+                        }
+                    }
+                ) { innerPadding ->
                     Surface(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                         CalendarScreen(modifier = Modifier.fillMaxSize())
                     }
