@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.filled.
 import com.example.schedule.ui.theme.ScheduleTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
