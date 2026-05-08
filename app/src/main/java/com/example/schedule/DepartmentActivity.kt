@@ -8,13 +8,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -27,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.schedule.ui.theme.ScheduleTheme
 
-class SettingsActivity : ComponentActivity() {
+class DepartmentActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,7 +33,6 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-
             ScheduleTheme {
 
                 Scaffold(
@@ -50,7 +47,7 @@ class SettingsActivity : ComponentActivity() {
                                 onClick = {
                                     startActivity(
                                         Intent(
-                                            this@SettingsActivity,
+                                            this@DepartmentActivity,
                                             MainActivity::class.java
                                         )
                                     )
@@ -68,16 +65,8 @@ class SettingsActivity : ComponentActivity() {
                             )
 
                             NavigationBarItem(
-                                selected = false,
-                                onClick = {
-                                    startActivity(
-                                        Intent(
-                                            this@SettingsActivity,
-                                            DepartmentActivity::class.java
-                                        )
-                                    )
-                                    finish()
-                                },
+                                selected = true,
+                                onClick = { },
                                 icon = {
                                     Icon(
                                         imageVector = Icons.Filled.List,
@@ -90,8 +79,16 @@ class SettingsActivity : ComponentActivity() {
                             )
 
                             NavigationBarItem(
-                                selected = true,
-                                onClick = { },
+                                selected = false,
+                                onClick = {
+                                    startActivity(
+                                        Intent(
+                                            this@DepartmentActivity,
+                                            SettingsActivity::class.java
+                                        )
+                                    )
+                                    finish()
+                                },
                                 icon = {
                                     Icon(
                                         imageVector = Icons.Filled.Settings,
@@ -113,7 +110,7 @@ class SettingsActivity : ComponentActivity() {
                             .padding(innerPadding)
                     ) {
 
-                        SettingsScreen(
+                        DepartmentScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -124,7 +121,7 @@ class SettingsActivity : ComponentActivity() {
 }
 
 @Composable
-private fun SettingsScreen(
+private fun DepartmentScreen(
     modifier: Modifier = Modifier
 ) {
 
@@ -134,22 +131,12 @@ private fun SettingsScreen(
     ) {
 
         Text(
-            text = "Настройки",
+            text = "Отдел",
             style = MaterialTheme.typography.headlineSmall
         )
 
-        Button(
-            onClick = { },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Выбрать пользователя")
-        }
-
-        Button(
-            onClick = { },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Настройки экрана")
-        }
+        Text(
+            text = "Экран расписания отдела пока пуст"
+        )
     }
 }
