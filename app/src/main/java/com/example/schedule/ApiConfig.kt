@@ -4,4 +4,9 @@ object ApiConfig {
     const val BASE_URL = "http://10.0.2.2:8000"
     const val LOGIN_PATH = "/api/login"
     const val LOGIN_URL = "$BASE_URL$LOGIN_PATH"
+    const val CURRENT_MONTH_URL = "/api/%d/%d"
+
+    fun currentMonthUrl(year: Int, month: Int): String {
+        return BASE_URL + CURRENT_MONTH_URL.format(year, month)
+    }
 }
