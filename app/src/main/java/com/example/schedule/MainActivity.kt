@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.
 import com.example.schedule.ui.theme.ScheduleTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -160,6 +161,37 @@ fun CalendarScreen(
             month = month,
             shiftsByDay = shiftsByDay
         )
+        ShiftLegend()
+    }
+}
+
+@Composable
+fun ShiftLegend() {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+
+        LegendItem(color = Color(0xFFFFB3B3), text = "Дневная смена")
+        LegendItem(color = Color(0xFFB3D4FF), text = "Ночная смена")
+        LegendItem(color = Color(0xFFB8E6B8), text = "8")
+        LegendItem(color = Color(0xFF808080), text = "Выходной")
+        LegendItem(color = Color(0xFFFFA500), text = "Больничный")
+    }
+}
+
+@Composable
+fun LegendItem(color: Color, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .background(color, shape = MaterialTheme.shapes.small)
+        )
+        Text(text = text, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -263,13 +295,14 @@ private fun DayCell(
     shiftMarker: ShiftMarker?,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (isToday) Color.Black else MaterialTheme.colorScheme.outlineVariant
-    val borderWidth = if (isToday) 3.dp else 1.dp
+    val borderColor = if (isToday) Color.Red else MaterialTheme.colorScheme.outlineVariant
+    val borderWidth = if (isToday) 5.dp else 1.dp
     val backgroundColor = when (shiftMarker) {
         ShiftMarker.DAY -> Color(0xFFFFB3B3)
         ShiftMarker.NIGHT -> Color(0xFFB3D4FF)
         ShiftMarker.NUMERIC -> Color(0xFFB8E6B8)
         ShiftMarker.OFF -> Color(0xFF808080)
+        ShiftMarker.SICK -> Color(0xFFFFA500)
         null -> Color.Transparent
     }
 
@@ -300,7 +333,8 @@ private enum class ShiftMarker {
     DAY,
     NIGHT,
     NUMERIC,
-    OFF
+    OFF,
+    SICK
 }
 
 private suspend fun loadMonthShifts(
@@ -358,6 +392,7 @@ private fun parseMonthShifts(body: String): Map<Int, ShiftMarker> {
             shiftType == "Д" -> ShiftMarker.DAY
             shiftType == "Н" -> ShiftMarker.NIGHT
             shiftType == "О" -> ShiftMarker.OFF
+            shiftType == "Б" -> ShiftMarker.SICK
             shiftType.all { it.isDigit() } && shiftType.isNotEmpty() -> ShiftMarker.NUMERIC
             else -> null
         }

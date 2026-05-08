@@ -1,7 +1,7 @@
 package com.example.schedule
 
 object ApiConfig {
-    const val BASE_URL = "http://10.0.2.2:8000"
+    const val BASE_URL = "http://157.22.201.243:8000"
     const val LOGIN_PATH = "/api/login"
     const val LOGIN_URL = "$BASE_URL$LOGIN_PATH"
     const val CURRENT_MONTH_URL = "/api/%d/%d"
