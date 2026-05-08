@@ -3,6 +3,7 @@ package com.example.schedule
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -268,6 +269,7 @@ private fun DayCell(
         ShiftMarker.DAY -> Color(0xFFFFB3B3)
         ShiftMarker.NIGHT -> Color(0xFFB3D4FF)
         ShiftMarker.NUMERIC -> Color(0xFFB8E6B8)
+        ShiftMarker.OFF -> Color(0xFF808080)
         null -> Color.Transparent
     }
 
@@ -297,16 +299,20 @@ fun CalendarPreview() {
 private enum class ShiftMarker {
     DAY,
     NIGHT,
-    NUMERIC
+    NUMERIC,
+    OFF
 }
 
 private suspend fun loadMonthShifts(
     month: YearMonth,
     token: String
 ): Result<Map<Int, ShiftMarker>> {
+    val logTag = "ScheduleApi"
     return withContext(Dispatchers.IO) {
         runCatching {
             val requestUrl = ApiConfig.currentMonthUrl(month.year, month.monthValue)
+            Log.d(logTag, "Request -> GET $requestUrl")
+            Log.d(logTag, "Request headers -> Authorization=Bearer ***, Accept=application/json")
             val connection = (URL(requestUrl).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10_000
@@ -321,8 +327,15 @@ private suspend fun loadMonthShifts(
             } else {
                 connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
             }
+            val bodyForLog = if (responseBody.length > 1_500) {
+                responseBody.take(1_500) + "...(truncated)"
+            } else {
+                responseBody
+            }
+            Log.d(logTag, "Response <- status=$statusCode body=$bodyForLog")
 
             if (statusCode !in 200..299) {
+                Log.e(logTag, "Request failed with status=$statusCode")
                 throw IllegalStateException("Ошибка загрузки смен ($statusCode)")
             }
 
@@ -344,6 +357,7 @@ private fun parseMonthShifts(body: String): Map<Int, ShiftMarker> {
         val marker = when {
             shiftType == "Д" -> ShiftMarker.DAY
             shiftType == "Н" -> ShiftMarker.NIGHT
+            shiftType == "О" -> ShiftMarker.OFF
             shiftType.all { it.isDigit() } && shiftType.isNotEmpty() -> ShiftMarker.NUMERIC
             else -> null
         }
