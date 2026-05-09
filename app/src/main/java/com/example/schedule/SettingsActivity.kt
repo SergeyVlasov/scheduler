@@ -114,7 +114,26 @@ class SettingsActivity : ComponentActivity() {
                     ) {
 
                         SettingsScreen(
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+
+                            onLogout = {
+
+                                getSharedPreferences(
+                                    AuthActivity.AUTH_PREFS,
+                                    MODE_PRIVATE
+                                ).edit()
+                                    .remove(AuthActivity.KEY_TOKEN)
+                                    .apply()
+
+                                startActivity(
+                                    Intent(
+                                        this@SettingsActivity,
+                                        AuthActivity::class.java
+                                    )
+                                )
+
+                                finish()
+                            }
                         )
                     }
                 }
@@ -125,7 +144,8 @@ class SettingsActivity : ComponentActivity() {
 
 @Composable
 private fun SettingsScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLogout: () -> Unit
 ) {
 
     Column(
@@ -139,10 +159,10 @@ private fun SettingsScreen(
         )
 
         Button(
-            onClick = { },
+            onClick = onLogout,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Выбрать пользователя")
+            Text("Выйти")
         }
 
         Button(
