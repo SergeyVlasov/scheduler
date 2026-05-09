@@ -270,7 +270,7 @@ fun ShiftLegend() {
 
         LegendItem(
             color = Color(0xFF808080),
-            text = "Выходной"
+            text = "Отпуск"
         )
 
         LegendItem(
