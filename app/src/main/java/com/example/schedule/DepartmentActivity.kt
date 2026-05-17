@@ -1,8 +1,8 @@
 package com.example.schedule
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.content.Context
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,15 +10,22 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.schedule.data.model.EmployeeShiftsResponse
 import com.example.schedule.data.model.ShiftDto
 import com.example.schedule.ui.theme.ScheduleTheme
@@ -27,14 +34,14 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.YearMonth
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.sp
+
+private val MONTHS_RU = listOf(
+    "Январь","Февраль","Март","Апрель","Май","Июнь",
+    "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
+)
 
 class DepartmentActivity : ComponentActivity() {
 
@@ -54,9 +61,7 @@ class DepartmentActivity : ComponentActivity() {
             ScheduleTheme {
 
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-
                         NavigationBar {
 
                             NavigationBarItem(
@@ -71,7 +76,7 @@ class DepartmentActivity : ComponentActivity() {
 
                             NavigationBarItem(
                                 selected = true,
-                                onClick = { },
+                                onClick = {},
                                 icon = { Icon(Icons.Filled.List, null) },
                                 label = { Text("Отдел") }
                             )
@@ -111,9 +116,14 @@ private fun DepartmentScreen(
     modifier: Modifier = Modifier
 ) {
     var month by remember { mutableStateOf(YearMonth.now()) }
+
     var employees by remember { mutableStateOf<List<EmployeeShiftsResponse>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    val sortedEmployees = remember(employees) {
+        employees.sortedBy { it.employee_id }
+    }
 
     val days = remember(month) {
         (1..month.lengthOfMonth()).toList()
@@ -133,7 +143,9 @@ private fun DepartmentScreen(
         )
 
         result
-            .onSuccess { employees = it }
+            .onSuccess { list ->
+                employees = list.sortedBy { it.employee_id }
+            }
             .onFailure {
                 employees = emptyList()
                 error = it.message
@@ -144,42 +156,39 @@ private fun DepartmentScreen(
 
     val shiftColors: (String?) -> Color = { type ->
         when (type) {
-            "Д" -> Color(0xFFFFB3B3)
-            "Н" -> Color(0xFFB3D4FF)
+            "Д" -> Color(0xFFDC2626)
+            "Н" -> Color(0xFF2563EB)
             "О" -> Color.Gray
             "Б" -> Color(0xFFFFA500)
-            "8" -> Color(0xFF90EE90)
+            "8", "7", "У" -> Color(0xFF90EE90)
             else -> Color.LightGray
         }
     }
 
-    val employeeShiftMaps = remember(employees) {
-        employees.associate { emp ->
+    val employeeShiftMaps = remember(sortedEmployees) {
+        sortedEmployees.associate { emp ->
             emp.employee_id to emp.work_shifts.associate {
-                val day = it.shift_date % 100   // 👈 берём день
+                val day = it.shift_date % 100
                 day to it
             }
         }
     }
 
+    val monthName = MONTHS_RU[month.monthValue - 1]
+
     Column(modifier = modifier.padding(12.dp)) {
 
-        // HEADER
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             IconButton(onClick = { month = month.minusMonths(1) }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
             }
 
             Text(
-                text = "${month.month.getDisplayName(
-                    java.time.format.TextStyle.FULL,
-                    java.util.Locale("ru")
-                )} ${month.year}",
+                text = "$monthName ${month.year}",
                 style = MaterialTheme.typography.titleLarge
             )
 
@@ -196,29 +205,28 @@ private fun DepartmentScreen(
         val cellSize = 32.dp
         val rowHeight = cellSize
 
-        // TABLE
         Row(modifier = Modifier.fillMaxSize()) {
 
-            // LEFT FIXED COLUMN
             Column(
                 modifier = Modifier
-                    .width(140.dp)
+                    .width(100.dp)
                     .verticalScroll(vScroll)
             ) {
-
                 Spacer(Modifier.height(rowHeight))
 
-                employees.forEach { emp ->
+                sortedEmployees.forEach { emp ->
                     Text(
                         text = emp.last_name,
+                        fontSize = 12.sp,
+                        maxLines = 1,
                         modifier = Modifier
                             .height(rowHeight)
-                            .padding(vertical = 8.dp)
+                            .padding(start = 4.dp, top = 3.dp),
+                        lineHeight = 12.sp
                     )
                 }
             }
 
-            // RIGHT GRID
             Box(
                 modifier = Modifier
                     .horizontalScroll(hScroll)
@@ -227,23 +235,36 @@ private fun DepartmentScreen(
 
                 Column {
 
-                    // DAYS HEADER
                     Row {
                         days.forEach { day ->
+
+                            val date = LocalDate.of(month.year, month.monthValue, day)
+
+                            val isWeekend =
+                                date.dayOfWeek == DayOfWeek.SATURDAY ||
+                                        date.dayOfWeek == DayOfWeek.SUNDAY
+
                             Box(
                                 modifier = Modifier
                                     .width(cellSize)
                                     .height(rowHeight)
-                                    .border(1.dp, Color.Black),
+                                    .border(1.dp, Color.Black)
+                                    .background(
+                                        if (isWeekend) Color(0xFF616161)
+                                        else Color(0xFFBDBDBD)
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(day.toString(), fontSize = 12.sp)
+                                Text(
+                                    text = day.toString(),
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
                             }
                         }
                     }
 
-                    // EMPLOYEES ROWS
-                    employees.forEach { emp ->
+                    sortedEmployees.forEach { emp ->
 
                         val shiftMap = employeeShiftMaps[emp.employee_id] ?: emptyMap()
 
@@ -287,11 +308,6 @@ private suspend fun loadSubdivisionShifts(
 
             val url = ApiConfig.subdivisionUrl(year, month)
 
-            val startTime = System.currentTimeMillis()
-
-            Log.d(TAG, "➡️ REQUEST: $url")
-            Log.d(TAG, "Authorization: Bearer ${token.take(10)}...")
-
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10_000
@@ -310,16 +326,15 @@ private suspend fun loadSubdivisionShifts(
                     connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
                 }
 
-                val duration = System.currentTimeMillis() - startTime
-
-                Log.d(TAG, "⬅️ RESPONSE: HTTP $code (${duration}ms)")
-                Log.d(TAG, "BODY: $body")
+                Log.d(TAG, "HTTP $code")
+                Log.d(TAG, body)
 
                 if (code !in 200..299) {
                     throw IllegalStateException("HTTP $code: $body")
                 }
 
                 parseEmployees(body)
+
             } finally {
                 connection.disconnect()
             }
@@ -329,8 +344,8 @@ private suspend fun loadSubdivisionShifts(
 
 private fun parseEmployees(body: String): List<EmployeeShiftsResponse> {
 
-    val result = mutableListOf<EmployeeShiftsResponse>()
     val array = JSONArray(body)
+    val result = mutableListOf<EmployeeShiftsResponse>()
 
     for (i in 0 until array.length()) {
 

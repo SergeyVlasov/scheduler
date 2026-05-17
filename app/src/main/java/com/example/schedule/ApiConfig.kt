@@ -10,12 +10,24 @@ object ApiConfig {
     const val LOGIN_URL = "$BASE_URL$LOGIN_PATH"
 
     const val CURRENT_MONTH_URL = "/api/%d/%d"
+    const val DAY_DETAIL_URL = "/api/%d/%d/%d"
+
+    const val UPLOAD_DIOP_PATH = "/api/upload-xls-DIOP"
+    const val UPLOAD_SOPR_PATH = "/api/upload-xls-SOPR"
 
     fun currentMonthUrl(year: Int, month: Int): String {
         return "$BASE_URL/".trimEnd('/') + CURRENT_MONTH_URL.format(year, month)
     }
 
+    fun dayDetailUrl(year: Int, month: Int, day: Int): String {
+        return "$BASE_URL/".trimEnd('/') + DAY_DETAIL_URL.format(year, month, day)
+    }
+
     fun subdivisionUrl(year: Int, month: Int): String {
         return "$BASE_URL$SUBDIVISION_PATH/$year/$month"
     }
+
+    fun uploadDiopUrl(): String = "$BASE_URL$UPLOAD_DIOP_PATH"
+
+    fun uploadSoprUrl(): String = "$BASE_URL$UPLOAD_SOPR_PATH"
 }

@@ -24,7 +24,7 @@
         <activity
             android:name=".AuthActivity"
             android:exported="true"
-            android:label="Вход"
+            android:label="График"
             android:theme="@style/Theme.Schedule">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
