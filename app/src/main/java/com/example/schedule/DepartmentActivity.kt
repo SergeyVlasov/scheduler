@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.schedule.data.model.EmployeeShiftsResponse
@@ -160,7 +161,11 @@ private fun DepartmentScreen(
             "Н" -> Color(0xFF2563EB)
             "О" -> Color.Gray
             "Б" -> Color(0xFFFFA500)
-            "8", "7", "У" -> Color(0xFF90EE90)
+
+            "1", "2", "3", "4", "5", "6",
+            "7", "8", "9", "10", "11", "12",
+            "У" -> Color(0xFF90EE90)
+
             else -> Color.LightGray
         }
     }
@@ -178,22 +183,40 @@ private fun DepartmentScreen(
 
     Column(modifier = modifier.padding(12.dp)) {
 
+        val arrowCircleColor = Color(0xFF294597)
+
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { month = month.minusMonths(1) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+
+            FilledIconButton(
+                onClick = { month = month.minusMonths(1) },
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = arrowCircleColor,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("‹")
             }
 
             Text(
                 text = "$monthName ${month.year}",
-                style = MaterialTheme.typography.titleLarge
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center
             )
 
-            IconButton(onClick = { month = month.plusMonths(1) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
+            FilledIconButton(
+                onClick = { month = month.plusMonths(1) },
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = arrowCircleColor,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("›")
             }
         }
 

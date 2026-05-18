@@ -10,47 +10,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.schedule.ui.theme.ScheduleTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -83,8 +57,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ScheduleTheme {
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+
                     bottomBar = {
 
                         NavigationBar {
@@ -328,17 +304,20 @@ private fun DayWorkersDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Закрыть")
             }
         },
+
         title = {
             Text(
                 text = "Работают в этот день",
                 style = MaterialTheme.typography.titleMedium
             )
         },
+
         text = {
 
             Column(
@@ -359,6 +338,7 @@ private fun DayWorkersDialog(
                                 .fillMaxWidth()
                                 .heightIn(min = 120.dp)
                                 .padding(16.dp),
+
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
@@ -421,7 +401,7 @@ fun ShiftLegend() {
 
         LegendItem(
             color = Color(0xFFA7F3D0),
-            text = "7"
+            text = "Не 8"
         )
 
         LegendItem(
@@ -500,6 +480,7 @@ private fun CalendarHeader(
         FilledIconButton(
             onClick = onPrevMonth,
             modifier = Modifier.size(40.dp),
+
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = arrowCircleColor,
                 contentColor = Color.White
@@ -518,6 +499,7 @@ private fun CalendarHeader(
         FilledIconButton(
             onClick = onNextMonth,
             modifier = Modifier.size(40.dp),
+
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = arrowCircleColor,
                 contentColor = Color.White
@@ -650,14 +632,14 @@ private fun DayCell(
         ShiftMarker.NIGHT ->
             Color(0xFF2563EB)
 
-        ShiftMarker.NUMERIC ->
+        ShiftMarker.EIGHT ->
             Color(0xFF16A34A)
 
-        ShiftMarker.SEVEN ->
-            Color(0xFFA7F3D0) // бледно-зелёный
+        ShiftMarker.NOT_EIGHT ->
+            Color(0xFFA7F3D0)
 
         ShiftMarker.U ->
-            Color(0xFFBFDBFE) // бледно-синий
+            Color(0xFFBFDBFE)
 
         ShiftMarker.OFF ->
             Color(0xFF808080)
@@ -690,7 +672,6 @@ private fun DayCell(
 
     Box(
         modifier = cellModifier,
-
         contentAlignment = Alignment.Center
     ) {
 
@@ -716,8 +697,8 @@ fun CalendarPreview() {
 private enum class ShiftMarker {
     DAY,
     NIGHT,
-    NUMERIC,
-    SEVEN,
+    EIGHT,
+    NOT_EIGHT,
     U,
     OFF,
     SICK
@@ -743,11 +724,6 @@ private suspend fun loadMonthShifts(
             Log.d(
                 logTag,
                 "Request -> GET $requestUrl"
-            )
-
-            Log.d(
-                logTag,
-                "Request headers -> Authorization=Bearer ***, Accept=application/json"
             )
 
             val connection =
@@ -787,24 +763,7 @@ private suspend fun loadMonthShifts(
                         .orEmpty()
                 }
 
-            val bodyForLog =
-                if (responseBody.length > 1_500) {
-                    responseBody.take(1_500) + "...(truncated)"
-                } else {
-                    responseBody
-                }
-
-            Log.d(
-                logTag,
-                "Response <- status=$statusCode body=$bodyForLog"
-            )
-
             if (statusCode !in 200..299) {
-
-                Log.e(
-                    logTag,
-                    "Request failed with status=$statusCode"
-                )
 
                 throw IllegalStateException(
                     "Ошибка загрузки смен ($statusCode)"
@@ -860,14 +819,18 @@ private fun parseMonthShifts(
             shiftType == "Б" ->
                 ShiftMarker.SICK
 
-            shiftType == "7" ->
-                ShiftMarker.SEVEN
+            shiftType == "8" ->
+                ShiftMarker.EIGHT
+
+            shiftType in setOf(
+                "1", "2", "3", "4",
+                "5", "6", "7",
+                "9", "10", "11", "12"
+            ) ->
+                ShiftMarker.NOT_EIGHT
 
             shiftType == "У" ->
                 ShiftMarker.U
-
-            shiftType.all { it.isDigit() } ->
-                ShiftMarker.NUMERIC
 
             else -> null
         }
@@ -924,58 +887,36 @@ private suspend fun loadDayWorkers(
                     )
                 }
 
-            try {
+            val statusCode =
+                connection.responseCode
 
-                val statusCode =
-                    connection.responseCode
+            val responseBody =
+                if (statusCode in 200..299) {
 
-                val responseBody =
-                    if (statusCode in 200..299) {
+                    connection.inputStream
+                        .bufferedReader()
+                        .use { it.readText() }
 
-                        connection.inputStream
-                            .bufferedReader()
-                            .use { it.readText() }
+                } else {
 
-                    } else {
-
-                        connection.errorStream
-                            ?.bufferedReader()
-                            ?.use { it.readText() }
-                            .orEmpty()
-                    }
-
-                val bodyForLog =
-                    if (responseBody.length > 1_500) {
-                        responseBody.take(1_500) + "...(truncated)"
-                    } else {
-                        responseBody
-                    }
-
-                Log.d(
-                    logTag,
-                    "Response <- status=$statusCode body=$bodyForLog"
-                )
-
-                if (statusCode !in 200..299) {
-
-                    throw IllegalStateException(
-                        "Ошибка загрузки ($statusCode)"
-                    )
+                    connection.errorStream
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                        .orEmpty()
                 }
 
-                parseDayWorkers(responseBody)
-
-            } finally {
-                connection.disconnect()
+            if (statusCode !in 200..299) {
+                throw IllegalStateException("Ошибка загрузки ($statusCode)")
             }
+
+            parseDayWorkers(responseBody)
         }
     }
 }
 
 private fun parseDayWorkers(body: String): List<String> {
 
-    val trimmed =
-        body.trim()
+    val trimmed = body.trim()
 
     if (trimmed.isEmpty()) {
         return emptyList()
@@ -988,8 +929,7 @@ private fun parseDayWorkers(body: String): List<String> {
 
         '{' -> {
 
-            val root =
-                JSONObject(trimmed)
+            val root = JSONObject(trimmed)
 
             when {
 
@@ -1001,23 +941,46 @@ private fun parseDayWorkers(body: String): List<String> {
                     parseDayDetailShifts(root)
 
                 root.has("employees") ->
-                    parseDayWorkersArray(
-                        root.getJSONArray("employees")
-                    )
+                    parseDayWorkersArray(root.getJSONArray("employees"))
 
                 root.has("data") ->
-                    root.optJSONArray("data")?.let {
-                        parseDayWorkersArray(it)
-                    }.orEmpty()
+                    root.optJSONArray("data")
+                        ?.let { parseDayWorkersArray(it) }
+                        ?: emptyList()
 
                 else ->
                     emptyList()
             }
         }
 
-        else ->
-            emptyList()
+        else -> emptyList()
     }
+}
+
+private fun parseDayWorkersArray(array: JSONArray): List<String> {
+
+    val names = mutableListOf<String>()
+
+    for (i in 0 until array.length()) {
+
+        when (val raw = array.get(i)) {
+
+            is String -> {
+                if (raw.isNotBlank()) {
+                    names.add(raw)
+                }
+            }
+
+            is JSONObject -> {
+                val label = buildEmployeeLabel(raw)
+                if (label.isNotBlank()) {
+                    names.add(label)
+                }
+            }
+        }
+    }
+
+    return names
 }
 
 private fun parseDayDetailShifts(
@@ -1056,6 +1019,55 @@ private fun parseDayDetailShifts(
 
     appendShiftLastNamesLine(
         root = root,
+        arrayKey = "last_names_shift_U",
+        label = "У",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_1",
+        label = "Смена 1",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_2",
+        label = "Смена 2",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_3",
+        label = "Смена 3",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_4",
+        label = "Смена 4",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_5",
+        label = "Смена 5",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_6",
+        label = "Смена 6",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
         arrayKey = "last_names_shift_7",
         label = "Смена 7",
         lines = lines
@@ -1063,8 +1075,29 @@ private fun parseDayDetailShifts(
 
     appendShiftLastNamesLine(
         root = root,
-        arrayKey = "last_names_shift_U",
-        label = "У",
+        arrayKey = "last_names_shift_9",
+        label = "Смена 9",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_10",
+        label = "Смена 10",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_11",
+        label = "Смена 11",
+        lines = lines
+    )
+
+    appendShiftLastNamesLine(
+        root = root,
+        arrayKey = "last_names_shift_12",
+        label = "Смена 12",
         lines = lines
     )
 
@@ -1078,95 +1111,35 @@ private fun appendShiftLastNamesLine(
     lines: MutableList<String>
 ) {
 
-    val arr =
-        root.optJSONArray(arrayKey)
-            ?: return
+    val arr = root.optJSONArray(arrayKey) ?: return
 
-    val names =
-        mutableListOf<String>()
+    val names = mutableListOf<String>()
 
-    for (index in 0 until arr.length()) {
-
-        val s =
-            arr.optString(index).trim()
-
+    for (i in 0 until arr.length()) {
+        val s = arr.optString(i).trim()
         if (s.isNotEmpty()) {
             names.add(s)
         }
     }
 
     if (names.isNotEmpty()) {
-        lines.add(
-            "$label: ${names.joinToString(", ")}"
-        )
+        lines.add("$label: ${names.joinToString(", ")}")
     }
 }
 
-private fun parseDayWorkersArray(
-    array: JSONArray
-): List<String> {
+private fun buildEmployeeLabel(obj: JSONObject): String {
 
-    val names =
-        mutableListOf<String>()
+    val fio = obj.optString("fio").trim()
+    if (fio.isNotEmpty()) return fio
 
-    for (index in 0 until array.length()) {
+    val name = obj.optString("name").trim()
+    if (name.isNotEmpty()) return name
 
-        val raw =
-            array.get(index)
+    val last = obj.optString("last_name").trim()
+    val first = obj.optString("first_name").trim()
+    val middle = obj.optString("middle_name").trim()
 
-        when (raw) {
-
-            is String ->
-                if (raw.isNotBlank()) {
-                    names.add(raw)
-                }
-
-            is JSONObject -> {
-
-                val label =
-                    buildEmployeeLabel(raw)
-
-                if (label.isNotBlank()) {
-                    names.add(label)
-                }
-            }
-        }
-    }
-
-    return names
-}
-
-private fun buildEmployeeLabel(
-    obj: JSONObject
-): String {
-
-    val fio =
-        obj.optString("fio").trim()
-
-    if (fio.isNotEmpty()) {
-        return fio
-    }
-
-    val singleName =
-        obj.optString("name").trim()
-
-    if (singleName.isNotEmpty()) {
-        return singleName
-    }
-
-    val last =
-        obj.optString("last_name").trim()
-
-    val first =
-        obj.optString("first_name").trim()
-
-    val middle =
-        obj.optString("middle_name").trim()
-
-    return listOf(
-        last,
-        first,
-        middle
-    ).filter { it.isNotEmpty() }
+    return listOf(last, first, middle)
+        .filter { it.isNotEmpty() }
         .joinToString(" ")
 }
