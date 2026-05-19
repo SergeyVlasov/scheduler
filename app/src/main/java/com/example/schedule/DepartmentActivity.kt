@@ -122,8 +122,10 @@ private fun DepartmentScreen(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    val sortedEmployees = remember(employees) {
-        employees.sortedBy { it.employee_id }
+    val groupedEmployees = remember(employees) {
+        employees
+            .sortedBy { it.employee_id }
+            .groupBy { it.subdivision }
     }
 
     val days = remember(month) {
@@ -170,8 +172,8 @@ private fun DepartmentScreen(
         }
     }
 
-    val employeeShiftMaps = remember(sortedEmployees) {
-        sortedEmployees.associate { emp ->
+    val employeeShiftMaps = remember(employees) {
+        employees.associate { emp ->
             emp.employee_id to emp.work_shifts.associate {
                 val day = it.shift_date % 100
                 day to it
@@ -237,16 +239,33 @@ private fun DepartmentScreen(
             ) {
                 Spacer(Modifier.height(rowHeight))
 
-                sortedEmployees.forEach { emp ->
-                    Text(
-                        text = emp.last_name,
-                        fontSize = 12.sp,
-                        maxLines = 1,
+                groupedEmployees.forEach { (subdivision, employeesInSubdivision) ->
+
+                    Box(
                         modifier = Modifier
-                            .height(rowHeight)
-                            .padding(start = 4.dp, top = 3.dp),
-                        lineHeight = 12.sp
-                    )
+                            .fillMaxWidth()
+                            .background(Color(0xFF294597))
+                            .padding(4.dp)
+                    ) {
+                        Text(
+                            text = subdivision,
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    employeesInSubdivision.forEach { emp ->
+
+                        Text(
+                            text = emp.last_name,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .height(rowHeight)
+                                .padding(start = 4.dp, top = 3.dp),
+                            lineHeight = 12.sp
+                        )
+                    }
                 }
             }
 
@@ -287,27 +306,37 @@ private fun DepartmentScreen(
                         }
                     }
 
-                    sortedEmployees.forEach { emp ->
+                    groupedEmployees.forEach { (subdivision, employeesInSubdivision) ->
 
-                        val shiftMap = employeeShiftMaps[emp.employee_id] ?: emptyMap()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(rowHeight)
+                                .background(Color(0xFF294597))
+                        )
 
-                        Row {
-                            days.forEach { day ->
+                        employeesInSubdivision.forEach { emp ->
 
-                                val shift = shiftMap[day]
+                            val shiftMap = employeeShiftMaps[emp.employee_id] ?: emptyMap()
 
-                                Box(
-                                    modifier = Modifier
-                                        .size(cellSize)
-                                        .border(1.dp, Color.Black)
-                                        .background(shiftColors(shift?.shift_type)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = shift?.shift_type ?: "",
-                                        fontSize = 12.sp,
-                                        color = Color.Black
-                                    )
+                            Row {
+                                days.forEach { day ->
+
+                                    val shift = shiftMap[day]
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(cellSize)
+                                            .border(1.dp, Color.Black)
+                                            .background(shiftColors(shift?.shift_type)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = shift?.shift_type ?: "",
+                                            fontSize = 12.sp,
+                                            color = Color.Black
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -399,6 +428,7 @@ private fun parseEmployees(body: String): List<EmployeeShiftsResponse> {
                 first_name = obj.getString("first_name"),
                 last_name = obj.getString("last_name"),
                 middle_name = obj.optString("middle_name"),
+                subdivision = obj.optString("subdivision"),
                 work_shifts = shifts
             )
         )

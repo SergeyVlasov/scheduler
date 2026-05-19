@@ -5,5 +5,6 @@ data class EmployeeShiftsResponse(
     val first_name: String,
     val last_name: String,
     val middle_name: String,
-    val work_shifts: List<ShiftDto>
+    val work_shifts: List<ShiftDto>,
+    val subdivision: String
 )
