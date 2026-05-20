@@ -689,7 +689,8 @@ private fun DayCell(
         Text(
             text = day?.toString() ?: "",
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = Color.Black
         )
     }
 }

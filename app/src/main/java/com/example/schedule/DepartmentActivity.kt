@@ -14,8 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -38,6 +36,8 @@ import java.net.URL
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 
 private val MONTHS_RU = listOf(
     "Январь","Февраль","Март","Апрель","Май","Июнь",
@@ -59,38 +59,64 @@ class DepartmentActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
+
+            val configuration = LocalConfiguration.current
+
+            val isLandscape =
+                configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
             ScheduleTheme {
 
                 Scaffold(
                     bottomBar = {
-                        NavigationBar {
 
-                            NavigationBarItem(
-                                selected = false,
-                                onClick = {
-                                    startActivity(Intent(activity, MainActivity::class.java))
-                                    finish()
-                                },
-                                icon = { Icon(Icons.Filled.Home, null) },
-                                label = { Text("График") }
-                            )
+                        if (!isLandscape) {
 
-                            NavigationBarItem(
-                                selected = true,
-                                onClick = {},
-                                icon = { Icon(Icons.Filled.List, null) },
-                                label = { Text("Отдел") }
-                            )
+                            NavigationBar {
 
-                            NavigationBarItem(
-                                selected = false,
-                                onClick = {
-                                    startActivity(Intent(activity, SettingsActivity::class.java))
-                                    finish()
-                                },
-                                icon = { Icon(Icons.Filled.Settings, null) },
-                                label = { Text("Настройки") }
-                            )
+                                NavigationBarItem(
+                                    selected = false,
+                                    onClick = {
+                                        startActivity(
+                                            Intent(activity, MainActivity::class.java)
+                                        )
+                                        finish()
+                                    },
+                                    icon = {
+                                        Icon(Icons.Filled.Home, null)
+                                    },
+                                    label = {
+                                        Text("График")
+                                    }
+                                )
+
+                                NavigationBarItem(
+                                    selected = true,
+                                    onClick = {},
+                                    icon = {
+                                        Icon(Icons.Filled.List, null)
+                                    },
+                                    label = {
+                                        Text("Отдел")
+                                    }
+                                )
+
+                                NavigationBarItem(
+                                    selected = false,
+                                    onClick = {
+                                        startActivity(
+                                            Intent(activity, SettingsActivity::class.java)
+                                        )
+                                        finish()
+                                    },
+                                    icon = {
+                                        Icon(Icons.Filled.Settings, null)
+                                    },
+                                    label = {
+                                        Text("Настройки")
+                                    }
+                                )
+                            }
                         }
                     }
                 ) { padding ->
@@ -100,6 +126,7 @@ class DepartmentActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(padding)
                     ) {
+
                         DepartmentScreen(
                             token = token,
                             modifier = Modifier.fillMaxSize()
