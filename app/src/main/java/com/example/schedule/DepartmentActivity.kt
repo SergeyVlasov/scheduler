@@ -232,105 +232,131 @@ private fun DepartmentScreen(
 
         Row(modifier = Modifier.fillMaxSize()) {
 
+            // ЛЕВАЯ КОЛОНКА С ФАМИЛИЯМИ
             Column(
-                modifier = Modifier
-                    .width(100.dp)
-                    .verticalScroll(vScroll)
+                modifier = Modifier.width(100.dp)
             ) {
+
                 Spacer(Modifier.height(rowHeight))
 
-                groupedEmployees.forEach { (subdivision, employeesInSubdivision) ->
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF294597))
-                            .padding(4.dp)
-                    ) {
-                        Text(
-                            text = subdivision,
-                            color = Color.White,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    employeesInSubdivision.forEach { emp ->
-
-                        Text(
-                            text = emp.last_name,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            modifier = Modifier
-                                .height(rowHeight)
-                                .padding(start = 4.dp, top = 3.dp),
-                            lineHeight = 12.sp
-                        )
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .horizontalScroll(hScroll)
-                    .verticalScroll(vScroll)
-            ) {
-
-                Column {
-
-                    Row {
-                        days.forEach { day ->
-
-                            val date = LocalDate.of(month.year, month.monthValue, day)
-
-                            val isWeekend =
-                                date.dayOfWeek == DayOfWeek.SATURDAY ||
-                                        date.dayOfWeek == DayOfWeek.SUNDAY
-
-                            Box(
-                                modifier = Modifier
-                                    .width(cellSize)
-                                    .height(rowHeight)
-                                    .border(1.dp, Color.Black)
-                                    .background(
-                                        if (isWeekend) Color(0xFF616161)
-                                        else Color(0xFFBDBDBD)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = day.toString(),
-                                    fontSize = 12.sp,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
+                Column(
+                    modifier = Modifier.verticalScroll(vScroll)
+                ) {
 
                     groupedEmployees.forEach { (subdivision, employeesInSubdivision) ->
 
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .background(Color(0xFF294597))
+                                .padding(4.dp)
+                        ) {
+                            Text(
+                                text = subdivision,
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        employeesInSubdivision.forEach { emp ->
+
+                            Text(
+                                text = emp.last_name,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .height(rowHeight)
+                                    .padding(start = 4.dp, top = 3.dp),
+                                lineHeight = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ПРАВАЯ ЧАСТЬ ТАБЛИЦЫ
+            Column(
+                modifier = Modifier
+                    .horizontalScroll(hScroll)
+            ) {
+
+                // ЗАКРЕПЛЕННАЯ ШАПКА
+                Row {
+
+                    days.forEach { day ->
+
+                        val date = LocalDate.of(month.year, month.monthValue, day)
+
+                        val isWeekend =
+                            date.dayOfWeek == DayOfWeek.SATURDAY ||
+                                    date.dayOfWeek == DayOfWeek.SUNDAY
+
+                        Box(
+                            modifier = Modifier
+                                .width(cellSize)
+                                .height(rowHeight)
+                                .border(1.dp, Color.Black)
+                                .background(
+                                    if (isWeekend) Color(0xFF616161)
+                                    else Color(0xFFBDBDBD)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = day.toString(),
+                                fontSize = 12.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
+                // СКРОЛЛ ТОЛЬКО ДЛЯ ТЕЛА ТАБЛИЦЫ
+                Column(
+                    modifier = Modifier.verticalScroll(vScroll)
+                ) {
+
+                    groupedEmployees.forEach { (_, employeesInSubdivision) ->
+
+                        Box(
+                            modifier = Modifier
+                                .width(cellSize * days.size)
                                 .height(rowHeight)
                                 .background(Color(0xFF294597))
                         )
 
                         employeesInSubdivision.forEach { emp ->
 
-                            val shiftMap = employeeShiftMaps[emp.employee_id] ?: emptyMap()
+                            val shiftMap =
+                                employeeShiftMaps[emp.employee_id] ?: emptyMap()
 
                             Row {
+
                                 days.forEach { day ->
 
                                     val shift = shiftMap[day]
+
+                                    val date = LocalDate.of(month.year, month.monthValue, day)
+
+                                    val isWeekend =
+                                        date.dayOfWeek == DayOfWeek.SATURDAY ||
+                                                date.dayOfWeek == DayOfWeek.SUNDAY
+
+                                    val baseColor = shiftColors(shift?.shift_type)
 
                                     Box(
                                         modifier = Modifier
                                             .size(cellSize)
                                             .border(1.dp, Color.Black)
-                                            .background(shiftColors(shift?.shift_type)),
+                                            .background(
+                                                if (isWeekend)
+                                                    darkenColor(baseColor)
+                                                else
+                                                    baseColor
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
+
                                         Text(
                                             text = shift?.shift_type ?: "",
                                             fontSize = 12.sp,
@@ -435,4 +461,13 @@ private fun parseEmployees(body: String): List<EmployeeShiftsResponse> {
     }
 
     return result
+}
+
+private fun darkenColor(color: Color, factor: Float = 0.75f): Color {
+    return Color(
+        red = color.red * factor,
+        green = color.green * factor,
+        blue = color.blue * factor,
+        alpha = color.alpha
+    )
 }
