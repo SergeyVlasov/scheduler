@@ -582,15 +582,18 @@ private fun MonthGrid(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
-                week.forEach { day ->
+                week.forEachIndexed { index, day ->
 
                     val isToday =
                         isCurrentMonth &&
                                 day == today.dayOfMonth
 
+                    val isWeekend = index >= 5
+
                     DayCell(
                         day = day,
                         isToday = isToday,
+                        isWeekend = isWeekend,
                         shiftMarker = day?.let {
                             shiftsByDay[it]
                         },
@@ -609,6 +612,7 @@ private fun MonthGrid(
 private fun DayCell(
     day: Int?,
     isToday: Boolean,
+    isWeekend: Boolean,
     shiftMarker: ShiftMarker?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -624,7 +628,7 @@ private fun DayCell(
     val borderWidth =
         if (isToday) 5.dp else 1.dp
 
-    val backgroundColor = when (shiftMarker) {
+    val baseColor = when (shiftMarker) {
 
         ShiftMarker.DAY ->
             Color(0xFFDC2626)
@@ -648,8 +652,15 @@ private fun DayCell(
             Color(0xFFFFA500)
 
         null ->
-            Color.Transparent
+            Color(0xFFE5E7EB)
     }
+
+    val backgroundColor =
+        if (isWeekend) {
+            darkenColor(baseColor, factor = 0.55f)
+        } else {
+            baseColor
+        }
 
     val cellModifier = modifier
         .aspectRatio(1f)
@@ -1142,4 +1153,17 @@ private fun buildEmployeeLabel(obj: JSONObject): String {
     return listOf(last, first, middle)
         .filter { it.isNotEmpty() }
         .joinToString(" ")
+}
+
+private fun darkenColor(
+    color: Color,
+    factor: Float = 0.65f
+): Color {
+
+    return Color(
+        red = color.red * factor,
+        green = color.green * factor,
+        blue = color.blue * factor,
+        alpha = color.alpha
+    )
 }
