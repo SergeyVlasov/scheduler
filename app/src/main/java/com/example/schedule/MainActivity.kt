@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.schedule.effects.SnowEffect
+import com.example.schedule.effects.isSnowSeason
 import com.example.schedule.ui.theme.ScheduleTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -60,7 +62,6 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-
                     bottomBar = {
 
                         NavigationBar {
@@ -125,7 +126,7 @@ class MainActivity : ComponentActivity() {
 
                 ) { innerPadding ->
 
-                    Surface(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
@@ -135,6 +136,12 @@ class MainActivity : ComponentActivity() {
                             authToken = token,
                             modifier = Modifier.fillMaxSize()
                         )
+
+                        if (isSnowSeason()) {
+                            SnowEffect(
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 }
             }

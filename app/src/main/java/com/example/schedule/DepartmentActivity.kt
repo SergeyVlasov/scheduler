@@ -144,7 +144,10 @@ private fun DepartmentScreen(
     modifier: Modifier = Modifier
 ) {
     var month by remember { mutableStateOf(YearMonth.now()) }
+    val configuration = LocalConfiguration.current
 
+    val isLandscape =
+        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     var employees by remember { mutableStateOf<List<EmployeeShiftsResponse>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -214,39 +217,44 @@ private fun DepartmentScreen(
 
         val arrowCircleColor = Color(0xFF294597)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (!isLandscape) {
 
-            FilledIconButton(
-                onClick = { month = month.minusMonths(1) },
-                modifier = Modifier.size(40.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = arrowCircleColor,
-                    contentColor = Color.White
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("‹")
+
+                FilledIconButton(
+                    onClick = { month = month.minusMonths(1) },
+                    modifier = Modifier.size(40.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = arrowCircleColor,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("‹")
+                }
+
+                Text(
+                    text = "$monthName ${month.year}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+
+                FilledIconButton(
+                    onClick = { month = month.plusMonths(1) },
+                    modifier = Modifier.size(40.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = arrowCircleColor,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("›")
+                }
             }
 
-            Text(
-                text = "$monthName ${month.year}",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center
-            )
-
-            FilledIconButton(
-                onClick = { month = month.plusMonths(1) },
-                modifier = Modifier.size(40.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = arrowCircleColor,
-                    contentColor = Color.White
-                )
-            ) {
-                Text("›")
-            }
+            Spacer(Modifier.height(8.dp))
         }
 
         if (loading) Text("Загрузка...")
