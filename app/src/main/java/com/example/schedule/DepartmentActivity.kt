@@ -38,6 +38,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 
 private val MONTHS_RU = listOf(
     "Январь","Февраль","Март","Апрель","Май","Июнь",
@@ -164,20 +165,25 @@ private fun DepartmentScreen(
 
     val vScroll = rememberScrollState()
     val hScroll = rememberScrollState()
+    val context = LocalContext.current
 
     LaunchedEffect(month) {
         loading = true
         error = null
 
         val result = loadSubdivisionShifts(
+            context = context,
             year = month.year,
             month = month.monthValue,
             token = token
         )
 
         result
-            .onSuccess { list ->
-                employees = list.sortedBy { it.employee_id }
+            .onSuccess { load ->
+                employees = load.value.sortedBy { it.employee_id }
+                if (load.fromCache) {
+                    error = OFFLINE_DATA_HINT
+                }
             }
             .onFailure {
                 employees = emptyList()
@@ -258,7 +264,16 @@ private fun DepartmentScreen(
         }
 
         if (loading) Text("Загрузка...")
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        error?.let {
+            Text(
+                text = it,
+                color = if (it == OFFLINE_DATA_HINT) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                }
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
 
@@ -411,10 +426,13 @@ private fun DepartmentScreen(
 private const val TAG = "API_LOG"
 
 private suspend fun loadSubdivisionShifts(
+    context: Context,
     year: Int,
     month: Int,
     token: String
-): Result<List<EmployeeShiftsResponse>> {
+): Result<ScheduleLoad<List<EmployeeShiftsResponse>>> {
+
+    val cache = ScheduleCache(context)
 
     return withContext(Dispatchers.IO) {
         runCatching {
@@ -425,7 +443,6 @@ private suspend fun loadSubdivisionShifts(
                 requestMethod = "GET"
                 connectTimeout = 10_000
                 readTimeout = 10_000
-
                 setRequestProperty("Authorization", "Bearer $token")
                 setRequestProperty("Accept", "application/json")
             }
@@ -446,10 +463,26 @@ private suspend fun loadSubdivisionShifts(
                     throw IllegalStateException("HTTP $code: $body")
                 }
 
-                parseEmployees(body)
+                cache.putSubdivision(year, month, body)
+
+                ScheduleLoad(parseEmployees(body))
 
             } finally {
                 connection.disconnect()
+            }
+
+        }.recoverCatching { error ->
+
+            val cachedBody = cache.getSubdivision(year, month)
+
+            if (cachedBody != null) {
+                Log.w(TAG, "Using cached subdivision shifts", error)
+                ScheduleLoad(
+                    parseEmployees(cachedBody),
+                    fromCache = true
+                )
+            } else {
+                throw error
             }
         }
     }

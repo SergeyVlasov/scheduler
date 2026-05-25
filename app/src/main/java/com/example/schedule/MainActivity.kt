@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.schedule.effects.SnowEffect
 import com.example.schedule.effects.isSnowSeason
@@ -175,18 +176,24 @@ fun CalendarScreen(
         mutableStateOf<LocalDate?>(null)
     }
 
+    val context = LocalContext.current
+
     LaunchedEffect(month, authToken) {
 
         isLoading = true
         errorText = null
 
         val result = loadMonthShifts(
+            context = context,
             month = month,
             token = authToken
         )
 
-        result.onSuccess {
-            shiftsByDay = it
+        result.onSuccess { load ->
+            shiftsByDay = load.value
+            if (load.fromCache) {
+                errorText = OFFLINE_DATA_HINT
+            }
         }.onFailure { throwable ->
 
             shiftsByDay = emptyMap()
@@ -224,7 +231,11 @@ fun CalendarScreen(
         if (!errorText.isNullOrBlank()) {
             Text(
                 text = errorText.orEmpty(),
-                color = MaterialTheme.colorScheme.error
+                color = if (errorText == OFFLINE_DATA_HINT) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                }
             )
         }
 
@@ -267,20 +278,26 @@ private fun DayWorkersDialog(
         mutableStateOf<String?>(null)
     }
 
+    val context = LocalContext.current
+
     LaunchedEffect(date, authToken) {
 
         dialogLoading = true
         dialogError = null
 
         val result = loadDayWorkers(
+            context = context,
             year = date.year,
             month = date.monthValue,
             day = date.dayOfMonth,
             token = authToken
         )
 
-        result.onSuccess {
-            workers = it
+        result.onSuccess { load ->
+            workers = load.value
+            if (load.fromCache) {
+                dialogError = OFFLINE_DATA_HINT
+            }
             dialogLoading = false
         }.onFailure { throwable ->
             workers = emptyList()
@@ -354,7 +371,11 @@ private fun DayWorkersDialog(
                     !dialogError.isNullOrBlank() ->
                         Text(
                             text = dialogError.orEmpty(),
-                            color = MaterialTheme.colorScheme.error
+                            color = if (dialogError == OFFLINE_DATA_HINT) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            }
                         )
 
                     workers.isEmpty() ->
@@ -724,11 +745,13 @@ private enum class ShiftMarker {
 }
 
 private suspend fun loadMonthShifts(
+    context: Context,
     month: YearMonth,
     token: String
-): Result<Map<Int, ShiftMarker>> {
+): Result<ScheduleLoad<Map<Int, ShiftMarker>>> {
 
     val logTag = "ScheduleApi"
+    val cache = ScheduleCache(context)
 
     return withContext(Dispatchers.IO) {
 
@@ -745,51 +768,30 @@ private suspend fun loadMonthShifts(
                 "Request -> GET $requestUrl"
             )
 
-            val connection =
-                (URL(requestUrl).openConnection() as HttpURLConnection).apply {
+            val responseBody = fetchAuthorizedGet(requestUrl, token)
 
-                    requestMethod = "GET"
+            cache.putMonth(
+                month.year,
+                month.monthValue,
+                responseBody
+            )
 
-                    connectTimeout = 10_000
-                    readTimeout = 10_000
+            ScheduleLoad(parseMonthShifts(responseBody))
 
-                    setRequestProperty(
-                        "Authorization",
-                        "Bearer $token"
-                    )
+        }.recoverCatching { error ->
 
-                    setRequestProperty(
-                        "Accept",
-                        "application/json"
-                    )
-                }
+            val cachedBody =
+                cache.getMonth(month.year, month.monthValue)
 
-            val statusCode =
-                connection.responseCode
-
-            val responseBody =
-                if (statusCode in 200..299) {
-
-                    connection.inputStream
-                        .bufferedReader()
-                        .use { it.readText() }
-
-                } else {
-
-                    connection.errorStream
-                        ?.bufferedReader()
-                        ?.use { it.readText() }
-                        .orEmpty()
-                }
-
-            if (statusCode !in 200..299) {
-
-                throw IllegalStateException(
-                    "Ошибка загрузки смен ($statusCode)"
+            if (cachedBody != null) {
+                Log.w(logTag, "Using cached month shifts", error)
+                ScheduleLoad(
+                    parseMonthShifts(cachedBody),
+                    fromCache = true
                 )
+            } else {
+                throw error
             }
-
-            parseMonthShifts(responseBody)
         }
     }
 }
@@ -863,73 +865,91 @@ private fun parseMonthShifts(
 }
 
 private suspend fun loadDayWorkers(
+    context: Context,
     year: Int,
     month: Int,
     day: Int,
     token: String
-): Result<List<String>> {
+): Result<ScheduleLoad<List<String>>> {
 
     val logTag = "ScheduleApi"
+    val cache = ScheduleCache(context)
 
     return withContext(Dispatchers.IO) {
 
         runCatching {
 
             val requestUrl =
-                ApiConfig.dayDetailUrl(
-                    year,
-                    month,
-                    day
-                )
+                ApiConfig.dayDetailUrl(year, month, day)
 
             Log.d(
                 logTag,
                 "Request -> GET $requestUrl (day workers)"
             )
 
-            val connection =
-                (URL(requestUrl).openConnection() as HttpURLConnection).apply {
+            val responseBody = fetchAuthorizedGet(requestUrl, token)
 
-                    requestMethod = "GET"
+            cache.putDayDetail(year, month, day, responseBody)
 
-                    connectTimeout = 10_000
-                    readTimeout = 10_000
+            ScheduleLoad(parseDayWorkers(responseBody))
 
-                    setRequestProperty(
-                        "Authorization",
-                        "Bearer $token"
-                    )
+        }.recoverCatching { error ->
 
-                    setRequestProperty(
-                        "Accept",
-                        "application/json"
-                    )
-                }
+            val cachedBody =
+                cache.getDayDetail(year, month, day)
 
-            val statusCode =
-                connection.responseCode
+            if (cachedBody != null) {
+                Log.w(logTag, "Using cached day workers", error)
+                ScheduleLoad(
+                    parseDayWorkers(cachedBody),
+                    fromCache = true
+                )
+            } else {
+                throw error
+            }
+        }
+    }
+}
 
-            val responseBody =
-                if (statusCode in 200..299) {
+private fun fetchAuthorizedGet(
+    requestUrl: String,
+    token: String
+): String {
 
-                    connection.inputStream
-                        .bufferedReader()
-                        .use { it.readText() }
+    val connection =
+        (URL(requestUrl).openConnection() as HttpURLConnection).apply {
 
-                } else {
+            requestMethod = "GET"
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Accept", "application/json")
+        }
 
-                    connection.errorStream
-                        ?.bufferedReader()
-                        ?.use { it.readText() }
-                        .orEmpty()
-                }
+    try {
 
-            if (statusCode !in 200..299) {
-                throw IllegalStateException("Ошибка загрузки ($statusCode)")
+        val statusCode = connection.responseCode
+
+        val responseBody =
+            if (statusCode in 200..299) {
+                connection.inputStream
+                    .bufferedReader()
+                    .use { it.readText() }
+            } else {
+                connection.errorStream
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    .orEmpty()
             }
 
-            parseDayWorkers(responseBody)
+        if (statusCode !in 200..299) {
+            throw IllegalStateException("Ошибка загрузки ($statusCode)")
         }
+
+        return responseBody
+
+    } finally {
+        connection.disconnect()
     }
 }
 
