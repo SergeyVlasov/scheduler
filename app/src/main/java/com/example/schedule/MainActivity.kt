@@ -247,7 +247,7 @@ fun CalendarScreen(
             }
         )
 
-        ShiftLegend()
+        LegendButton()
     }
 
     pickedDay?.let { date ->
@@ -405,46 +405,94 @@ private fun DayWorkersDialog(
 }
 
 @Composable
-fun ShiftLegend() {
+fun LegendButton() {
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterEnd
     ) {
 
-        LegendItem(
-            color = Color(0xFFDC2626),
-            text = "Дневная смена"
-        )
+        FilledIconButton(
+            onClick = {
+                showDialog = true
+            }
+        ) {
 
-        LegendItem(
-            color = Color(0xFF2563EB),
-            text = "Ночная смена"
-        )
+            Text(
+                text = "?",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+    }
 
-        LegendItem(
-            color = Color(0xFF16A34A),
-            text = "8"
-        )
+    if (showDialog) {
 
-        LegendItem(
-            color = Color(0xFFA7F3D0),
-            text = "Не 8"
-        )
+        AlertDialog(
+            onDismissRequest = {
+                showDialog = false
+            },
 
-        LegendItem(
-            color = Color(0xFFBFDBFE),
-            text = "У"
-        )
+            confirmButton = {
 
-        LegendItem(
-            color = Color(0xFF808080),
-            text = "Отпуск"
-        )
+                TextButton(
+                    onClick = {
+                        showDialog = false
+                    }
+                ) {
+                    Text("Закрыть")
+                }
+            },
 
-        LegendItem(
-            color = Color(0xFFFFA500),
-            text = "Больничный"
+            title = {
+                Text("Обозначения")
+            },
+
+            text = {
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+
+                    LegendItem(
+                        color = Color(0xFFDC2626),
+                        text = "Дневная смена"
+                    )
+
+                    LegendItem(
+                        color = Color(0xFF2563EB),
+                        text = "Ночная смена"
+                    )
+
+                    LegendItem(
+                        color = Color(0xFF16A34A),
+                        text = "8"
+                    )
+
+                    LegendItem(
+                        color = Color(0xFFA7F3D0),
+                        text = "Не 8"
+                    )
+
+                    LegendItem(
+                        color = Color(0xFFBFDBFE),
+                        text = "У"
+                    )
+
+                    LegendItem(
+                        color = Color(0xFF808080),
+                        text = "Отпуск"
+                    )
+
+                    LegendItem(
+                        color = Color(0xFFFFA500),
+                        text = "Больничный"
+                    )
+                }
+            }
         )
     }
 }
