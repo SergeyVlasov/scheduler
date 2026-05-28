@@ -156,6 +156,10 @@ fun CalendarScreen(
     modifier: Modifier = Modifier
 ) {
 
+    var notes by remember {
+        mutableStateOf<List<String>>(emptyList())
+    }
+
     var month by remember {
         mutableStateOf(YearMonth.now())
     }
@@ -191,6 +195,7 @@ fun CalendarScreen(
 
         result.onSuccess { load ->
             shiftsByDay = load.value
+
             if (load.fromCache) {
                 errorText = OFFLINE_DATA_HINT
             }
@@ -200,6 +205,14 @@ fun CalendarScreen(
 
             errorText =
                 throwable.message ?: "Не удалось загрузить смены"
+        }
+
+        val notesResult = loadNotes(authToken)
+
+        notesResult.onSuccess {
+            notes = it
+        }.onFailure {
+            notes = emptyList()
         }
 
         isLoading = false
@@ -248,6 +261,45 @@ fun CalendarScreen(
         )
 
         LegendButton()
+        if (notes.isNotEmpty()) {
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                notes.forEach { note ->
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+
+                        colors = CardDefaults.cardColors(
+                            containerColor =
+                                MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            Text(
+                                text = "📝",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            Spacer(
+                                modifier = Modifier.width(8.dp)
+                            )
+
+                            Text(
+                                text = note,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pickedDay?.let { date ->
@@ -411,15 +463,22 @@ fun LegendButton() {
         mutableStateOf(false)
     }
 
-    Box(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd
+        verticalAlignment = Alignment.CenterVertically
     ) {
+
+        Text(
+            text = "Напоминания",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f)
+        )
 
         FilledIconButton(
             onClick = {
                 showDialog = true
-            }
+            },
+            modifier = Modifier.size(40.dp)
         ) {
 
             Text(
@@ -1242,4 +1301,72 @@ private fun darkenColor(
         blue = color.blue * factor,
         alpha = color.alpha
     )
+}
+
+private suspend fun loadNotes(
+    token: String
+): Result<List<String>> {
+
+    val logTag = "NotesApi"
+
+    return withContext(Dispatchers.IO) {
+
+        runCatching {
+
+            val requestUrl =
+                "${ApiConfig.BASE_URL}/api/get_note"
+
+            Log.d(
+                logTag,
+                "Request -> GET $requestUrl"
+            )
+
+            val responseBody =
+                fetchAuthorizedGet(requestUrl, token)
+
+            Log.d(
+                logTag,
+                "Response -> $responseBody"
+            )
+
+            val parsed =
+                parseNotes(responseBody)
+
+            Log.d(
+                logTag,
+                "Parsed notes -> $parsed"
+            )
+
+            parsed
+
+        }.onFailure { error ->
+
+            Log.e(
+                logTag,
+                "loadNotes failed",
+                error
+            )
+        }
+    }
+}
+
+private fun parseNotes(
+    body: String
+): List<String> {
+
+    val array = JSONArray(body)
+
+    val result = mutableListOf<String>()
+
+    for (i in 0 until array.length()) {
+
+        val text =
+            array.optString(i).trim()
+
+        if (text.isNotEmpty()) {
+            result.add(text)
+        }
+    }
+
+    return result
 }

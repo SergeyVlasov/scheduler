@@ -29,16 +29,29 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import com.example.schedule.ApiConfig
+import android.app.DatePickerDialog
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.*
+import kotlinx.serialization.encodeToString
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.Serializable
+import androidx.compose.ui.platform.LocalContext
+import java.time.LocalDate
 
 class SettingsActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         enableEdgeToEdge()
 
         setContent {
+            var showReminderDialog by remember { mutableStateOf(false) }
+            var users by remember { mutableStateOf<List<UserDto>>(emptyList()) }
 
             val diopPicker = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.OpenDocument()
@@ -52,6 +65,32 @@ class SettingsActivity : ComponentActivity() {
                 uri?.let { uploadFile(it, ApiConfig.uploadSoprUrl()) }
             }
 
+            LaunchedEffect(Unit) {
+                lifecycleScope.launch {
+                    try {
+                        val token = getSharedPreferences(
+                            AuthActivity.AUTH_PREFS,
+                            MODE_PRIVATE
+                        ).getString(AuthActivity.KEY_TOKEN, null) ?: return@launch
+
+                        val request = Request.Builder()
+                            .url(ApiConfig.BASE_URL + "/api/all_users")
+                            .header("Authorization", "Bearer $token")
+                            .build()
+
+                        val response = withContext(Dispatchers.IO) {
+                            NetworkModule.client.newCall(request).execute()
+                        }
+
+                        if (response.isSuccessful) {
+                            val body = response.body?.string().orEmpty()
+                            users = Json.decodeFromString<List<UserDto>>(body)
+                        }
+
+                    } catch (_: Exception) {
+                    }
+                }
+            }
             ScheduleTheme {
 
                 Scaffold(
@@ -112,6 +151,7 @@ class SettingsActivity : ComponentActivity() {
                     ) {
 
                         SettingsScreen(
+
                             modifier = Modifier.fillMaxSize(),
 
                             onLogout = {
@@ -137,8 +177,79 @@ class SettingsActivity : ComponentActivity() {
 
                             onPickSopr = {
                                 soprPicker.launch(arrayOf("application/vnd.ms-excel"))
+                            },
+                            onCreateReminder = {
+                                showReminderDialog = true
                             }
                         )
+                        if (showReminderDialog) {
+                            ReminderDialog(
+                                users = users,
+                                onDismiss = {
+                                    showReminderDialog = false
+                                },
+                                onCreate = { userIds, text, date ->
+
+                                    lifecycleScope.launch {
+
+                                        try {
+
+                                            val token = getSharedPreferences(
+                                                AuthActivity.AUTH_PREFS,
+                                                MODE_PRIVATE
+                                            ).getString(AuthActivity.KEY_TOKEN, null)
+                                                ?: return@launch
+
+                                            val requestBody = CreateNoteRequest(
+                                                user_ids = userIds,
+                                                note_text = text,
+                                                expiration_date = "${date}T00:00:00"
+                                            )
+
+                                            val json = Json.encodeToString(requestBody)
+
+                                            val request = Request.Builder()
+                                                .url(ApiConfig.BASE_URL + "/api/create_note")
+                                                .header("Authorization", "Bearer $token")
+                                                .post(
+                                                    json.toRequestBody(
+                                                        "application/json".toMediaType()
+                                                    )
+                                                )
+                                                .build()
+
+                                            val response = withContext(Dispatchers.IO) {
+                                                NetworkModule.client.newCall(request).execute()
+                                            }
+
+                                            if (response.isSuccessful) {
+                                                Toast.makeText(
+                                                    this@SettingsActivity,
+                                                    "Напоминание создано",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            } else {
+                                                Toast.makeText(
+                                                    this@SettingsActivity,
+                                                    "Ошибка ${response.code}",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+
+                                        } catch (e: Exception) {
+
+                                            Toast.makeText(
+                                                this@SettingsActivity,
+                                                e.message ?: "Ошибка",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+
+                                    showReminderDialog = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -182,7 +293,7 @@ class SettingsActivity : ComponentActivity() {
                 .build()
 
             withContext(Dispatchers.IO) {
-                OkHttpClient().newCall(request).execute()
+                NetworkModule.client.newCall(request).execute()
             }.use { response ->
                 val message = if (response.isSuccessful) {
                     "Файл загружен"
@@ -210,7 +321,8 @@ private fun SettingsScreen(
     modifier: Modifier = Modifier,
     onLogout: () -> Unit,
     onPickDiop: () -> Unit,
-    onPickSopr: () -> Unit
+    onPickSopr: () -> Unit,
+    onCreateReminder: () -> Unit
 ) {
     Column(
         modifier = modifier.padding(16.dp),
@@ -242,5 +354,184 @@ private fun SettingsScreen(
         ) {
             Text("Загрузить график СОПР")
         }
+        Button(
+            onClick = onCreateReminder,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Создать напоминание")
+        }
     }
+}
+@Serializable
+data class UserDto(
+    val id: Int,
+    val last_name: String,
+    val first_name: String,
+    val division: String
+)
+
+@Serializable
+data class CreateNoteRequest(
+    val user_ids: List<Int>,
+    val note_text: String,
+    val expiration_date: String
+)
+
+@Composable
+fun ReminderDialog(
+    users: List<UserDto>,
+    onDismiss: () -> Unit,
+    onCreate: (
+        userIds: List<Int>,
+        text: String,
+        date: String
+    ) -> Unit
+) {
+
+    var noteText by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+
+    var selectedDate by remember {
+        mutableStateOf(LocalDate.now().toString())
+    }
+
+    val selectedUsers = remember {
+        mutableStateMapOf<Int, Boolean>()
+    }
+
+    val groupedUsers = users.groupBy { it.division }
+
+    AlertDialog(
+
+        onDismissRequest = onDismiss,
+
+        confirmButton = {},
+
+        text = {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = {
+                        noteText = it
+                    },
+                    label = {
+                        Text("Текст напоминания")
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+
+                        val today = LocalDate.now()
+
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+
+                                selectedDate =
+                                    "%04d-%02d-%02d".format(
+                                        year,
+                                        month + 1,
+                                        day
+                                    )
+                            },
+                            today.year,
+                            today.monthValue - 1,
+                            today.dayOfMonth
+                        ).show()
+                    }
+                ) {
+                    Text("Дата: $selectedDate")
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+
+                    groupedUsers.forEach { (division, usersInDivision) ->
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+
+                            val allSelected =
+                                usersInDivision.all {
+                                    selectedUsers[it.id] == true
+                                }
+
+                            Checkbox(
+                                checked = allSelected,
+
+                                onCheckedChange = { checked ->
+
+                                    usersInDivision.forEach {
+
+                                        selectedUsers[it.id] = checked
+                                    }
+                                }
+                            )
+
+                            Text("Весь $division")
+                        }
+
+                        usersInDivision.forEach { user ->
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+
+                                Checkbox(
+                                    checked =
+                                        selectedUsers[user.id] == true,
+
+                                    onCheckedChange = { checked ->
+                                        selectedUsers[user.id] = checked
+                                    }
+                                )
+
+                                Text(
+                                    "${user.last_name} ${user.first_name}"
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+
+                        onCreate(
+                            selectedUsers
+                                .filterValues { it }
+                                .keys
+                                .toList(),
+
+                            noteText,
+
+                            selectedDate
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Создать напоминание")
+                }
+            }
+        }
+    )
 }
