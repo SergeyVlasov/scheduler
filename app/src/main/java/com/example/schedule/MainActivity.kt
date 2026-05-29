@@ -467,20 +467,12 @@ fun LegendButton() {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Text(
-            text = "Напоминания",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f)
-        )
-
         FilledIconButton(
             onClick = {
                 showDialog = true
             },
             modifier = Modifier.size(40.dp)
         ) {
-
             Text(
                 text = "?",
                 style = MaterialTheme.typography.titleMedium
@@ -1360,8 +1352,13 @@ private fun parseNotes(
 
     for (i in 0 until array.length()) {
 
+        val obj =
+            array.optJSONObject(i)
+                ?: continue
+
         val text =
-            array.optString(i).trim()
+            obj.optString("note_text")
+                .trim()
 
         if (text.isNotEmpty()) {
             result.add(text)
@@ -1370,3 +1367,4 @@ private fun parseNotes(
 
     return result
 }
+

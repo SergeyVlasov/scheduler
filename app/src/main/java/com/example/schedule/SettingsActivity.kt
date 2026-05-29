@@ -49,6 +49,8 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val isAdmin = AuthActivity.isAdmin(this)
+
         setContent {
             var showReminderDialog by remember { mutableStateOf(false) }
             var users by remember { mutableStateOf<List<UserDto>>(emptyList()) }
@@ -151,15 +153,15 @@ class SettingsActivity : ComponentActivity() {
                     ) {
 
                         SettingsScreen(
-
                             modifier = Modifier.fillMaxSize(),
-
+                            isAdmin = isAdmin,
                             onLogout = {
                                 getSharedPreferences(
                                     AuthActivity.AUTH_PREFS,
                                     MODE_PRIVATE
                                 ).edit()
                                     .remove(AuthActivity.KEY_TOKEN)
+                                    .remove(AuthActivity.KEY_IS_ADMIN)
                                     .apply()
 
                                 startActivity(
@@ -203,7 +205,7 @@ class SettingsActivity : ComponentActivity() {
                                             val requestBody = CreateNoteRequest(
                                                 user_ids = userIds,
                                                 note_text = text,
-                                                expiration_date = "${date}T00:00:00"
+                                                expiration_date = "${date}T23:59:00"
                                             )
 
                                             val json = Json.encodeToString(requestBody)
@@ -319,10 +321,11 @@ class SettingsActivity : ComponentActivity() {
 @Composable
 private fun SettingsScreen(
     modifier: Modifier = Modifier,
+    isAdmin: Boolean,
     onLogout: () -> Unit,
     onPickDiop: () -> Unit,
     onPickSopr: () -> Unit,
-    onCreateReminder: () -> Unit
+    onCreateReminder: () -> Unit,
 ) {
     Column(
         modifier = modifier.padding(16.dp),
@@ -341,24 +344,27 @@ private fun SettingsScreen(
             Text("Выйти")
         }
 
-        Button(
-            onClick = onPickDiop,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Загрузить график ДИОП")
-        }
+        if (isAdmin) {
+            Button(
+                onClick = onPickDiop,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Загрузить график ДИОП")
+            }
 
-        Button(
-            onClick = onPickSopr,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Загрузить график СОПР")
-        }
-        Button(
-            onClick = onCreateReminder,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Создать напоминание")
+            Button(
+                onClick = onPickSopr,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Загрузить график СОПР")
+            }
+
+            Button(
+                onClick = onCreateReminder,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Создать напоминание")
+            }
         }
     }
 }
@@ -367,7 +373,7 @@ data class UserDto(
     val id: Int,
     val last_name: String,
     val first_name: String,
-    val division: String
+    val subdivision: String
 )
 
 @Serializable
@@ -376,6 +382,7 @@ data class CreateNoteRequest(
     val note_text: String,
     val expiration_date: String
 )
+
 
 @Composable
 fun ReminderDialog(
@@ -400,7 +407,8 @@ fun ReminderDialog(
         mutableStateMapOf<Int, Boolean>()
     }
 
-    val groupedUsers = users.groupBy { it.division }
+    // grouping теперь по subdivision
+    val groupedUsers = users.groupBy { it.subdivision }
 
     AlertDialog(
 
@@ -450,7 +458,7 @@ fun ReminderDialog(
                         ).show()
                     }
                 ) {
-                    Text("Дата: $selectedDate")
+                    Text("Дата окончания напоминания: $selectedDate")
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -462,14 +470,14 @@ fun ReminderDialog(
                         .verticalScroll(rememberScrollState())
                 ) {
 
-                    groupedUsers.forEach { (division, usersInDivision) ->
+                    groupedUsers.forEach { (subdivision, usersInSubdivision) ->
 
                         Row(
                             modifier = Modifier.fillMaxWidth()
                         ) {
 
                             val allSelected =
-                                usersInDivision.all {
+                                usersInSubdivision.all {
                                     selectedUsers[it.id] == true
                                 }
 
@@ -478,17 +486,17 @@ fun ReminderDialog(
 
                                 onCheckedChange = { checked ->
 
-                                    usersInDivision.forEach {
+                                    usersInSubdivision.forEach {
 
                                         selectedUsers[it.id] = checked
                                     }
                                 }
                             )
 
-                            Text("Весь $division")
+                            Text("Весь $subdivision")
                         }
 
-                        usersInDivision.forEach { user ->
+                        usersInSubdivision.forEach { user ->
 
                             Row(
                                 modifier = Modifier.fillMaxWidth()

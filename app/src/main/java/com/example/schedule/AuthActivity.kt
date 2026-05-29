@@ -28,8 +28,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import android.util.Log
 import com.example.schedule.ui.theme.ScheduleTheme
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -50,8 +53,11 @@ class AuthActivity : ComponentActivity() {
             ScheduleTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AuthScreen(
-                        onAuthSuccess = { token ->
-                            prefs.edit().putString(KEY_TOKEN, token).apply()
+                        onAuthSuccess = { result ->
+                            prefs.edit()
+                                .putString(KEY_TOKEN, result.accessToken)
+                                .putBoolean(KEY_IS_ADMIN, result.isAdmin)
+                                .apply()
                             openMainAndFinish()
                         }
                     )
@@ -68,12 +74,23 @@ class AuthActivity : ComponentActivity() {
     companion object {
         const val AUTH_PREFS = "auth_prefs"
         const val KEY_TOKEN = "auth_token"
+        const val KEY_IS_ADMIN = "is_admin"
+        const val DEVICE_ANDROID = "ANDROID"
+
+        fun isAdmin(context: Context): Boolean =
+            context.getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_IS_ADMIN, false)
     }
 }
 
+private data class AuthResult(
+    val accessToken: String,
+    val isAdmin: Boolean,
+)
+
 @Composable
 private fun AuthScreen(
-    onAuthSuccess: (String) -> Unit,
+    onAuthSuccess: (AuthResult) -> Unit,
 ) {
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -146,10 +163,23 @@ private fun AuthScreen(
     }
 }
 
-private suspend fun loginRequest(login: String, password: String): Result<String> {
+private suspend fun getFcmToken(): String =
+    suspendCancellableCoroutine { continuation ->
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                continuation.resume(task.result.orEmpty())
+            } else {
+                Log.w("Network", "FCM token unavailable", task.exception)
+                continuation.resume("")
+            }
+        }
+    }
+
+private suspend fun loginRequest(login: String, password: String): Result<AuthResult> {
     return withContext(Dispatchers.IO) {
         runCatching {
             val logTag = "Network"
+            val fcmToken = getFcmToken()
             val connection = (URL(ApiConfig.LOGIN_URL).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 10_000
@@ -161,6 +191,8 @@ private suspend fun loginRequest(login: String, password: String): Result<String
             val requestBody = JSONObject()
                 .put("login", login)
                 .put("password", password)
+                .put("token", fcmToken)
+                .put("device", AuthActivity.DEVICE_ANDROID)
                 .toString()
 
             Log.d(logTag, "-> ${connection.requestMethod} ${ApiConfig.LOGIN_URL}")
@@ -187,14 +219,16 @@ private suspend fun loginRequest(login: String, password: String): Result<String
             }
 
             val responseJson = JSONObject(body)
-            val token = responseJson.optString("access_token")
-                .ifBlank { responseJson.optString("token") }
-            if (token.isBlank()) {
+            val accessToken = responseJson.optString("access_token")
+            if (accessToken.isBlank()) {
                 Log.e(logTag, "<- Token is missing in response")
                 throw IllegalStateException("Токен не получен")
             }
 
-            token
+            AuthResult(
+                accessToken = accessToken,
+                isAdmin = responseJson.optBoolean("is_admin", false),
+            )
         }
     }
 }
