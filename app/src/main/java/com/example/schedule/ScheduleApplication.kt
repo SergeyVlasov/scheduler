@@ -8,6 +8,7 @@ class ScheduleApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        NotificationHelper.createNotificationChannel(this)
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Log.i(TAG, "FCM token: ${task.result}")

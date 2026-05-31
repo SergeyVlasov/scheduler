@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">schedule</string>
+    <string name="notification_channel_id">schedule_notifications</string>
+    <string name="notification_channel_name">Уведомления</string>
+    <string name="notification_channel_description">Изменения в графике и другие оповещения</string>
+    <string name="notification_default_title">Новое уведомление</string>
+    <string name="notification_default_body">Получено новое сообщение</string>
 </resources>

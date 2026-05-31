@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,8 +40,17 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class AuthActivity : ComponentActivity() {
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NotificationHelper.requestNotificationPermissionIfNeeded(
+            this,
+            notificationPermissionLauncher
+        )
 
         val prefs = getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE)
         if (prefs.getString(KEY_TOKEN, null) != null) {
