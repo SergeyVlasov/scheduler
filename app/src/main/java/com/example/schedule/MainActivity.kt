@@ -40,6 +40,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.compose.material.icons.filled.Close
+import kotlinx.coroutines.launch
+
 
 class MainActivity : ComponentActivity() {
 
@@ -166,7 +169,7 @@ fun CalendarScreen(
 ) {
 
     var notes by remember {
-        mutableStateOf<List<String>>(emptyList())
+        mutableStateOf<List<NoteItem>>(emptyList())
     }
 
     var month by remember {
@@ -287,7 +290,10 @@ fun CalendarScreen(
                     ) {
 
                         Row(
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+
                             verticalAlignment = Alignment.CenterVertically
                         ) {
 
@@ -301,9 +307,65 @@ fun CalendarScreen(
                             )
 
                             Text(
-                                text = note,
-                                style = MaterialTheme.typography.bodyMedium
+                                text = note.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
                             )
+
+                            IconButton(
+
+                                onClick = {
+
+                                    val currentId = note.id
+
+                                    kotlinx.coroutines.CoroutineScope(
+                                        Dispatchers.Main
+                                    ).launch {
+
+                                        deleteNote(
+                                            idNote = currentId,
+                                            token = authToken
+                                        ).onSuccess {
+
+                                            notes = notes.filter {
+                                                it.id != currentId
+                                            }
+                                        }
+                                    }
+                                }
+                            ) {
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(
+                                            color = Color.Red,
+                                            shape = MaterialTheme.shapes.small
+                                        )
+                                        .clickable {
+                                            val currentId = note.id
+
+                                            kotlinx.coroutines.CoroutineScope(
+                                                Dispatchers.Main
+                                            ).launch {
+
+                                                deleteNote(
+                                                    idNote = currentId,
+                                                    token = authToken
+                                                ).onSuccess {
+                                                    notes = notes.filter { it.id != currentId }
+                                                }
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Удалить",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -480,7 +542,7 @@ fun LegendButton() {
             onClick = {
                 showDialog = true
             },
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(20.dp)
         ) {
             Text(
                 text = "?",
@@ -1306,7 +1368,7 @@ private fun darkenColor(
 
 private suspend fun loadNotes(
     token: String
-): Result<List<String>> {
+): Result<List<NoteItem>> {
 
     val logTag = "NotesApi"
 
@@ -1353,27 +1415,78 @@ private suspend fun loadNotes(
 
 private fun parseNotes(
     body: String
-): List<String> {
+): List<NoteItem> {
 
     val array = JSONArray(body)
-
-    val result = mutableListOf<String>()
+    val result = mutableListOf<NoteItem>()
 
     for (i in 0 until array.length()) {
 
-        val obj =
-            array.optJSONObject(i)
-                ?: continue
+        val obj = array.optJSONObject(i) ?: continue
 
-        val text =
-            obj.optString("note_text")
-                .trim()
+        val id = obj.optInt("id", -1)   // ✅ ВАЖНО: id, не id_note
 
-        if (text.isNotEmpty()) {
-            result.add(text)
+        val text = obj.optString("note_text").trim()
+
+        if (id != -1 && text.isNotEmpty()) {
+            result.add(
+                NoteItem(
+                    id = id,
+                    text = text
+                )
+            )
         }
     }
 
     return result
 }
+private data class NoteItem(
+    val id: Int,
+    val text: String
+)
 
+private suspend fun deleteNote(
+    idNote: Int,
+    token: String
+): Result<Unit> {
+
+    return withContext(Dispatchers.IO) {
+
+        runCatching {
+
+            val requestUrl =
+                "${ApiConfig.BASE_URL}/api/delete_note/$idNote"
+
+            val connection =
+                (URL(requestUrl).openConnection() as HttpURLConnection).apply {
+
+                    requestMethod = "DELETE"
+
+                    connectTimeout = 10_000
+                    readTimeout = 10_000
+
+                    setRequestProperty(
+                        "Authorization",
+                        "Bearer $token"
+                    )
+                }
+
+            try {
+
+                val statusCode =
+                    connection.responseCode
+
+                if (statusCode !in 200..299) {
+
+                    throw IllegalStateException(
+                        "Ошибка удаления ($statusCode)"
+                    )
+                }
+
+            } finally {
+
+                connection.disconnect()
+            }
+        }
+    }
+}
