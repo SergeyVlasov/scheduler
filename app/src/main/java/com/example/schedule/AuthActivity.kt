@@ -173,7 +173,7 @@ private fun AuthScreen(
     }
 }
 
-private suspend fun getFcmToken(): String =
+internal suspend fun getFcmToken(): String =
     suspendCancellableCoroutine { continuation ->
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {

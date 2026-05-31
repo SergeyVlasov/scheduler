@@ -1,5 +1,8 @@
 package com.example.schedule
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
 object ApiConfig {
 
     const val BASE_URL = "http://157.22.201.243:8000"
@@ -31,4 +34,9 @@ object ApiConfig {
     fun uploadDiopUrl(): String = "$BASE_URL$UPLOAD_DIOP_PATH"
 
     fun uploadSoprUrl(): String = "$BASE_URL$UPLOAD_SOPR_PATH"
+
+    fun deletePushTokenUrl(token: String): String {
+        val encodedToken = URLEncoder.encode(token, StandardCharsets.UTF_8.toString())
+        return "$BASE_URL/api/delete_push_token/$encodedToken"
+    }
 }

@@ -156,21 +156,46 @@ class SettingsActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(),
                             isAdmin = isAdmin,
                             onLogout = {
-                                getSharedPreferences(
-                                    AuthActivity.AUTH_PREFS,
-                                    MODE_PRIVATE
-                                ).edit()
-                                    .remove(AuthActivity.KEY_TOKEN)
-                                    .remove(AuthActivity.KEY_IS_ADMIN)
-                                    .apply()
+                                lifecycleScope.launch {
+                                    try {
+                                        val authToken = getSharedPreferences(
+                                            AuthActivity.AUTH_PREFS,
+                                            MODE_PRIVATE
+                                        ).getString(AuthActivity.KEY_TOKEN, null)
 
-                                startActivity(
-                                    Intent(
-                                        this@SettingsActivity,
-                                        AuthActivity::class.java
+                                        if (!authToken.isNullOrBlank()) {
+                                            val fcmToken = getFcmToken()
+                                            if (fcmToken.isNotBlank()) {
+                                                val request = Request.Builder()
+                                                    .url(ApiConfig.deletePushTokenUrl(fcmToken))
+                                                    .header("Authorization", "Bearer $authToken")
+                                                    .delete()
+                                                    .build()
+
+                                                withContext(Dispatchers.IO) {
+                                                    NetworkModule.client.newCall(request).execute()
+                                                }
+                                            }
+                                        }
+                                    } catch (_: Exception) {
+                                    }
+
+                                    getSharedPreferences(
+                                        AuthActivity.AUTH_PREFS,
+                                        MODE_PRIVATE
+                                    ).edit()
+                                        .remove(AuthActivity.KEY_TOKEN)
+                                        .remove(AuthActivity.KEY_IS_ADMIN)
+                                        .apply()
+
+                                    startActivity(
+                                        Intent(
+                                            this@SettingsActivity,
+                                            AuthActivity::class.java
+                                        )
                                     )
-                                )
-                                finish()
+                                    finish()
+                                }
                             },
 
                             onPickDiop = {
