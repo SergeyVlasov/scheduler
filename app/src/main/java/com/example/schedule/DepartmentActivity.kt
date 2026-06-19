@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +45,11 @@ import androidx.compose.ui.platform.LocalContext
 private val MONTHS_RU = listOf(
     "Январь","Февраль","Март","Апрель","Май","Июнь",
     "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
+)
+
+private val YearMonthSaver = Saver<YearMonth, Int>(
+    save = { it.year * 100 + it.monthValue },
+    restore = { YearMonth.of(it / 100, it % 100) }
 )
 
 class DepartmentActivity : ComponentActivity() {
@@ -144,7 +151,9 @@ private fun DepartmentScreen(
     token: String,
     modifier: Modifier = Modifier
 ) {
-    var month by remember { mutableStateOf(YearMonth.now()) }
+    var month by rememberSaveable(stateSaver = YearMonthSaver) {
+        mutableStateOf(YearMonth.now())
+    }
     val configuration = LocalConfiguration.current
 
     val isLandscape =
